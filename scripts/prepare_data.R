@@ -156,7 +156,7 @@ sample_win_sf <- as.polygons(rabbithole_map > -Inf) %>% st_as_sf()
 sample_win_sp <- sample_win_sf %>% as("Spatial")
 
 #Divide sample window into square polygons
-sq_grid <- st_make_grid(sample_win_sp, cellsize = 1, square = TRUE) %>% st_sf() #cellsize=0.5 makes 100 sq areas
+sq_grid <- st_make_grid(sample_win_sp, cellsize = 0.5, square = TRUE) %>% st_sf() #cellsize=0.5 makes 100 sq areas
 
 #Check if the grid contains land (alternatively only sea) ----
 contains_land <- as.logical(st_intersects(sq_grid$geometry, sample_win_sf$geometry))
@@ -164,18 +164,68 @@ contains_land[is.na(contains_land)] <- FALSE
 
 #Proportion of land contained in an area - will be used to normalise area-average parameter values  ----
 area_sq <- max(st_area(sq_grid)) #Area of 1 square grid block (in m^2) completely covered by land
-land_within_sq <- st_intersection(sq_grid$geometry, sample_win_sf$geometry) #Creates geometry of the portion of the land within each square
-#Check: ggplot(data = land_within_sq) + geom_sf() 
-sq_grid <- sq_grid %>% mutate(land_within_poly = land_within_sq)#save for later
-prop_land <- st_area(land_within_sq)/area_sq #proportion of each square area that is covered by land
+
+#Creates geometry of the portion of the land within each square
+
+# land_within_sq <- st_sfc()
+# prop_of_land_within_sq <- list()
+# for (i in 1:nrow(sq_grid)){
+#   land_area <- st_make_valid(st_intersection(sq_grid$geometry[i], sample_win_sf$geometry))
+#   
+#   if(length(land_area)!=0){
+#     land_within_sq[[i]] <- land_area
+#     prop_land <- round(as.numeric(st_area(land_area)/area_sq),4)
+#     if(length(which(prop_land==0)!=0)) {prop_land = prop_land[-which(prop_land==0)]} #catch invalid geometry artifacts
+#     prop_of_land_within_sq[[i]] <- prop_land
+#   } else if(length(land_area)==0){
+#     land_within_sq[[i]] <- 0
+#     prop_of_land_within_sq[[i]] <- 0 
+#   }
+# } 
+
+# x=st_sfc()
+# x = x %>% sf::st_set_crs(st_crs(land_within_sq))
+# land_within_sq = append(x, land_within_sq, after = which(!contains_land)[1])
+
+
+##Loop does the same as:
+land_within_sq <- st_make_valid(st_intersection(sq_grid$geometry, sample_win_sf$geometry))
+area_within_sq <- st_area(land_within_sq)# -- but deals with cases which contain no land
+prop_land_sq <- round(as.numeric(area_within_sq/area_sq), 4)
+
+land_within_sq_df = as.data.frame(land_within_sq) 
+land_within_sq_df <- land_within_sq_df %>% 
+  mutate(area_id = which(contains_land),
+         prop_land = prop_land_sq) %>% 
+  rename(land_within_poly=geometry)
+
+##Check:
+#library(ggplot2)
+#ggplot(data = land_within_sq) + geom_sf() 
+
+
+
+
+#Save proportion of land info ----
+sq_grid <- sq_grid %>% 
+  mutate(area_id = row_number(),
+         contains_land = contains_land) %>% 
+  left_join(land_within_sq_df, by=join_by(area_id)) %>% 
+  mutate(prop_land = coalesce(prop_land, 0)) #replace NAs in prop_land coloumn with 0
+
+# sq_grid <- sq_grid %>% 
+#   mutate(contains_land = contains_land,
+#          land_within_poly = land_within_sq,
+#          prop_land = prop_of_land_within_sq) #proportion of each square area that is covered by land
+
+
+
 
 
 #Assign square IDs ----
 sq_grid <- sq_grid %>%
   mutate(area_id = row_number(),
-         area_center = st_centroid(geometry),
-         contains_land = contains_land,
-         prop_land = as.numeric(prop_land))
+         area_center = st_centroid(geometry))
 
 #--------
 ##Assign hex area id to each site ----
