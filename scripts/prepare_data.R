@@ -40,6 +40,7 @@ dateID_cols <- paste0("X", as.character(1:max(len)))
   
 #Pivot data to tidy form
 dat <- raw_dat %>% 
+  arrange(economy) %>% #For phasemodel useful to have site_ids for Farmers running from 1:f_n_sites
   mutate(siteID = seq(1, nrow(raw_dat), 1)) %>% 
   dplyr::select(-dates, -len, -X) %>% 
   pivot_longer(dateID_cols, names_to = "dateID", values_to = "dates") %>% 
@@ -126,6 +127,7 @@ f_possible_origin_dat <- dat %>%
   arrange(desc(c14age)) %>%
   slice(1L)
 
+f_origin_siteID <- f_possible_origin_dat$siteID
 
 #-------------------------------------------------------------------------------
 ## Compute Great-Arc Distances in km for farming sites ---- #TODO: could there be a way to incorporate height values and/or environmental fitness into these calculations of distances?
@@ -134,8 +136,8 @@ f_sites <- f_siteInfo
 coordinates(f_sites) <- c('lon','lat')
 proj4string(f_sites)  <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
 f_dist_mat  <- spDists(f_sites, longlat=TRUE) #inter-site distance matrix: each site's distance from every other site (i.e. with n sites, this matrix is n^2)
-f_origin_point  <- c(f_possible_origin_dat$lon, f_possible_origin_dat$lat) #Origin: Sq12_1 site
-f_dist_org  <-  spDistsN1(f_sites, f_origin_point, longlat=TRUE) #distance from Sq12_1 site
+f_origin_point  <- c(f_possible_origin_dat$lon, f_possible_origin_dat$lat) #Origin: Fallsail site
+f_dist_org  <-  spDistsN1(f_sites, f_origin_point, longlat=TRUE) #distance from Fallsail site
 
 #All sites
 sites <- siteInfo
@@ -154,7 +156,7 @@ sample_win_sf <- as.polygons(rabbithole_map > -Inf) %>% st_as_sf()
 sample_win_sp <- sample_win_sf %>% as("Spatial")
 
 #Divide sample window into square polygons
-sq_grid <- st_make_grid(sample_win_sp, cellsize = 0.5, square = TRUE) %>% st_sf()
+sq_grid <- st_make_grid(sample_win_sp, cellsize = 1, square = TRUE) %>% st_sf() #cellsize=0.5 makes 100 sq areas
 
 #Check if the grid contains land (alternatively only sea) ----
 contains_land <- as.logical(st_intersects(sq_grid$geometry, sample_win_sf$geometry))
@@ -165,8 +167,6 @@ sq_grid <- sq_grid %>%
   mutate(area_id = row_number(),
          area_center = st_centroid(geometry),
          contains_land = contains_land)
-
-
 
 #--------
 ##Assign hex area id to each site ----
@@ -206,6 +206,7 @@ f_constants$dist_org  <- f_dist_org
 f_constants$n_areas  <- nrow(sq_grid) #All areas (even empty ones) are included #Only occupied areas: length(unique(f_siteInfo$area_id))
 f_constants$id_area  <- f_siteInfo$area_id 
 f_constants$origin_point <- f_origin_point
+f_constants$origin_siteID <- f_origin_siteID
 #Calibration curves
 f_constants$calBP <- intcal20$CalBP #Same for intcal20 and shcal20 
 f_constants$C14BP  <- cbind(intcal20$C14Age, shcal20$C14Age) #Northern and southern hemisphere calibration curves
