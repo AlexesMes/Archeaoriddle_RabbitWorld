@@ -24,9 +24,7 @@ load(here('data','c14data_farmers.RData'))
 
 
 #===============================================================================
-# MCMC RunScript (Model 1 Basic without site interdependence or varying areas) ----
-
-
+# MCMC RunScript (Model 1 Basic without site interdependence or aggregation up to an area level) ----
 model1 <- nimbleCode({
   for (i in 1:n_dates)
   {
@@ -91,17 +89,6 @@ dat <- list(cra = f_dateInfo$cra,
 # Initial parameters --
 buffer <- 100
 theta_init <- f_dateInfo$median_dates
-#delta_init <- f_siteInfo$diff + buffer
-#alpha_init <- f_siteInfo$earliest + buffer/2
-
-
-#Calibration curve
-f_constants$cc <- as.numeric(as.factor(f_dateInfo$calCurve)) #intcal20==1 and shcal20==2
-
-# Dummy extension of the calibration curve
-f_constants$calBP <- c(1000000, f_constants$calBP, -1000000)
-f_constants$C14BP <- rbind(c(1000000,1000000), f_constants$C14BP, c(-1000000,-1000000))
-f_constants$C14err <- rbind(c(1000,1000), f_constants$C14err, c(1000,1000))
 
 # Initialise regional parameters ----
 # Initialise sq areas which contain sites
@@ -206,9 +193,9 @@ sq_grid_conc <- sq_grid %>%
   mutate(site_freq = case_when((contains_land==TRUE & is.na(site_freq)) ~ 0, is.na(contains_land) ~ NA, !is.na(site_freq) ~ site_freq)) #0 if there are no sites, NA if the square area is in the sea
 
 #--------------  
-#Aggregate fitness and height values for each square area ----
+#Aggregate fitness and height values for the land portion of each square area ----
 #Fitness
-fitness_sf$area_id <- as.integer(st_within(fitness_sf$geometry, sq_grid$geometry))
+fitness_sf$area_id <- as.integer(st_within(fitness_sf$geometry, sq_grid$land_within_poly)) #Normalised based on the % of land cover vs. ocean cover. Using sq_grid$land_within_poly rather than sq_grid$geometry (i.e. the whole square area) effectively normalises for the portion of land that is contained within the square. Do not take sea values into consideration as human's can't settle in these areas.
 
 fitness_df <- fitness_sf %>% 
   group_by(area_id) %>% 
@@ -218,7 +205,7 @@ fitness_df <- fitness_sf %>%
   na.omit()
 
 #Height
-height_sf$area_id <- as.integer(st_within(height_sf$geometry, sq_grid$geometry))
+height_sf$area_id <- as.integer(st_within(height_sf$geometry, sq_grid$land_within_poly))
 
 height_df <- height_sf %>% 
   group_by(area_id) %>% 
@@ -239,6 +226,7 @@ sq_grid_conc_sp <- sq_grid_conc %>% as('Spatial')
 
 # #Plot square areas coloured by site frequency, fitness values or elevation
 # ggplot(data = sq_grid_conc) +
+#   geom_sf(data = as(sample_win_sp, 'sf')) +
 #   geom_sf(alpha=0.5, aes(fill=site_freq)) + #Alternatively: fill=sq_fitness_value #fill=sq_height_value
 #   geom_sf(data = as(f_sites, 'sf'), size=3, alpha=0.5, aes(colour="purple")) + #sites
 #   geom_sf_label(aes(label = area_id), label.size  = NA, alpha = 0.4, size=3.5) + #hex grid labels
@@ -284,11 +272,25 @@ sq_grid_conc <- sq_grid_conc %>%
   mutate(sq_elev_org = sq_height_value - sq_origin_elev) #difference in elevation from center of square containing Fallsail site  
   
  
+#-----------
+#Cumulative friction of square area k from origin square area
+#Initially: cf = sq_dist_org - w_f*sq_fit_org + w_e*sq_elev_org
+#The signs are based on the following initial assumptions:
+#(i) Moving to lower elevation is good -- leads to a decrease in cumulative friction
+#(ii) Moving to higher fitness values is good -- leads to a decrease in cumulative friction
+#The weights, w_f and w_e, currently ensure that sq_fit_org and sq_eleve_org are of the same order of magnitude
+#TODO: explore these assumptions and give weights to each of these parameters based on the relative importance
+
+w_e <- 0.25 #To refine. Arrived at by looking at (max(sq_grid_conc$sq_elev_org)-min(sq_grid_conc$sq_elev_org)) compared to (max(sq_grid_conc$sq_dist_org)-min(sq_grid_conc$sq_dist_org))
+w_f <- 200 #To refine. Arrived at by looking at (max(sq_grid_conc$sq_fit_org)-min(sq_grid_conc$sq_fit_org)) compared to (max(sq_grid_conc$sq_dist_org)-min(sq_grid_conc$sq_dist_org))
+  
+sq_grid_conc <- sq_grid_conc %>% 
+  mutate(cf = sq_dist_org - w_f*sq_fit_org + w_e*sq_elev_org) %>% 
+  mutate(cf = case_when(cf<0 ~ 50, cf>=0 ~ cf)) #If cumulative friction is negative -- assign a small positive value. It takes a minimum amount of effort to move. #TODO: adjust amount. Currently chosen at random.
 
 
  
-  
-#----------  
+#-------------------------------------------------------------------------------  
 model3 <- nimbleCode({
   for (i in 1:n_dates)
   {
@@ -302,11 +304,17 @@ model3 <- nimbleCode({
   
   # Set Prior for Each Region
   for (k in 1:n_areas){
-    a[k] ~ dunif(4000, 12000);
+    sigma[k] ~ dcar_normal(adj[1:L], weights[1:L], num[k], tau1, zero_mean =0); #spatial random effect modelled using ICAR
+    
+    a[k] ~ beta_1 + sigma[k];
     b[k] ~ dunif(4000, 12000);
     constraint_uniform[k] ~ dconstraint(a[k]>b[k]) #In each area, start date of occupation, a_k, must be greater than the end date of occupation, b_k (note: BP dates in the positive direction)
   }
+  tau1 <- 1/sigma1^2
+  sigma1 ~ dunif(0,100)
+  
 })
+
 
 
 #Initialise parameters ---- 

@@ -162,11 +162,20 @@ sq_grid <- st_make_grid(sample_win_sp, cellsize = 1, square = TRUE) %>% st_sf() 
 contains_land <- as.logical(st_intersects(sq_grid$geometry, sample_win_sf$geometry))
 contains_land[is.na(contains_land)] <- FALSE
 
+#Proportion of land contained in an area - will be used to normalise area-average parameter values  ----
+area_sq <- max(st_area(sq_grid)) #Area of 1 square grid block (in m^2) completely covered by land
+land_within_sq <- st_intersection(sq_grid$geometry, sample_win_sf$geometry) #Creates geometry of the portion of the land within each square
+#Check: ggplot(data = land_within_sq) + geom_sf() 
+sq_grid <- sq_grid %>% mutate(land_within_poly = land_within_sq)#save for later
+prop_land <- st_area(land_within_sq)/area_sq #proportion of each square area that is covered by land
+
+
 #Assign square IDs ----
 sq_grid <- sq_grid %>%
   mutate(area_id = row_number(),
          area_center = st_centroid(geometry),
-         contains_land = contains_land)
+         contains_land = contains_land,
+         prop_land = as.numeric(prop_land))
 
 #--------
 ##Assign hex area id to each site ----
