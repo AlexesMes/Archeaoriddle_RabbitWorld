@@ -535,34 +535,151 @@ dev.off()
 # Marginal Posterior Distribution of nu, model a ---- FIGURE 14
 
 out.comb.unif.model.a  <- do.call(rbind, out_unif_model_a)
-post.nu.model.a  <- out.comb.unif.model.a[,paste0('a[',1:100,']')] %>%  round() #100 sq areas
+post.nu.model.a  <- out.comb.unif.model.a[,paste0('a[',1:25,']')] %>%  round() #100 sq areas
 model.a.long  <- data.frame(value = as.numeric(post.nu.model.a),
-                            area = rep(1:100, each=nrow(post.nu.model.a)))
+                            area = factor(rep(1:25, each=nrow(post.nu.model.a)), levels=paste0(1:25), ordered=TRUE))
 
 #Plot
 pdf(file=here('output','figures','figure14.pdf'), height=10, width=8)
 
 ggplot(model.a.long, aes(x = value, y = area, fill='lightblue')) + 
   geom_density_ridges() +
-  scale_x_reverse(limits=c(8500,7000), breaks=BCADtoBP(c(-6600, -6400, -6200, -6000, -5800, -5600, -5400, -5200, -5000)), labels=c('6600BC', '6400BC', '6200BC', '6000BC', '5800BC', '5600BC', '5400BC', '5200BC', '5000BC')) +
-  scale_fill_viridis_d(name = "Stream") +
+  scale_x_reverse(limits=c(9000,7000), breaks=BCADtoBP(c(-7000, -6800, -6600, -6400, -6200, -6000, -5800, -5600, -5400, -5200)), labels=c('7000BC', '6800BC', '6600BC', '6400BC', '6200BC', '6000BC', '5800BC', '5600BC', '5400BC', '5200BC')) +
+  scale_fill_manual(values='lightblue') +
+  theme(legend.position = "none") +
   xlab(paste('Arrival time,', TeX('$a_k$'))) +
   ylab(paste('Area,', TeX('$k$')))
 
 dev.off()
 
 
-axis(1, at=c(0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650)) #X-axis
-axis(2, at=c(7000, 7250, 7500, 7750, 8000, 8250, 8500)) #Y-axis left
-axis(4, at=BCADtoBP(c(-6600, -6400, -6200, -6000, -5800, -5600, -5400, -5200, -5000)), labels=c('6600BC', '6400BC', '6200BC', '6000BC', '5800BC', '5600BC', '5400BC', '5200BC', '5000BC'), cex.axis=0.6) #Y-axis right
+#-------------------------------------------------------------------------------
+# Probability Matrix of nu, model a ---- FIGURE 15
+source(here('src','orderPPlot.R'))
+post.nu.model.a_rel  <- out.comb.unif.model.a[,paste0('a[',1:25,']')] %>%  round() #Keep relevant sq areas
+
+pdf(file=here('output','figures','figure15.pdf'), width=10, height=10.5)
+orderPPlot(post.nu.model.a_rel, name.vec=paste("Area", 1:25))
+dev.off()
 
 
+#-------------------------------------------------------------------------------
+## Plot sq areas with median arrival times ---- FIGURE 16
+
+#Extract arrival times for model A
+out.comb.unif.modela  <- do.call(rbind, out_unif_model_a)
+post.nu.modela  <- out.comb.unif.modela[,paste0('a[',1:25,']')]  %>% round() 
+hpdi.modela  <- apply(post.nu.modela, 2, function(x){HPDinterval(as.mcmc(x), prob = .90)}) 
+med.modela  <- apply(post.nu.modela, 2, median)
+hi90_modA  <- hpdi.modela[1,]
+lo90_modA  <- hpdi.modela[2,]
+
+area_sites = c(1,2,4,10,13,14,16,18,24) #areas which contain sites
+ocean_boundary = st_difference(sq_grid$geometry, as(gUnaryUnion(sample_win_sp), "sf")$geometry)
+
+median_sq_dates_modA <- sq_grid %>% 
+  mutate(median_date = as.factor(med.modela),
+         hpdi_high = as.factor(hi90_modA),
+         hpdi_low = as.factor(lo90_modA),
+         contains_sites = as.factor(case_when(area_id %in% area_sites ~ 1, area_id %!in% area_sites ~ 0)),
+         median_date_sq_with_sites = case_when(area_id %in% area_sites ~ median_date, area_id %!in% area_sites ~ NA)) 
 
 
+#Plot
+#-----MODEL A
+modA <- ggplot(data = median_sq_dates_modA) +
+  geom_sf(aes(fill = median_date, alpha=contains_sites)) + #sq grid
+  geom_sf(data = ocean_boundary, color = "lightblue", fill="lightblue") + #block out ocean
+  geom_sf(data=sq_grid, fill=NA)+ #outline grid squares
+  scale_fill_manual(values = wes_palette(43, name = "GrandBudapest1", type = "continuous"), name = "")+
+  xlab('Longitude') +
+  ylab('Latitude') +
+  geom_sf_label(aes(label = ifelse(is.na(median_date_sq_with_sites), "", paste0(median_date_sq_with_sites, "BP"))), label.size  = NA, alpha = 0.4, size=3.5) + #hex grid labels
+  scale_alpha_manual(values=c(0.5, 1)) +
+  theme(panel.background = element_rect(fill = "lightblue",
+                                        colour = "lightblue",
+                                        size = 0.5,
+                                        linetype = "solid"),
+        legend.position = "none")
 
 
+modAHPDIlow <- ggplot(data = median_sq_dates_modA) +
+  geom_sf(aes(fill = hpdi_low, alpha=contains_sites)) +
+  geom_sf(data = ocean_boundary, color = "lightblue", fill="lightblue") + #block out ocean
+  geom_sf(data=sq_grid, fill=NA)+ #outline grid squares
+  ggtitle('90% HPDI (low)') +
+  scale_fill_manual(values = wes_palette(43, name = "GrandBudapest1", type = "continuous"), name = "") +
+  scale_alpha_manual(values=c(0.5, 1)) +
+  theme(axis.line=element_blank(),
+        axis.text.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks=element_blank(),
+        panel.background = element_rect(fill='transparent'),
+        plot.background = element_rect(fill='transparent', color=NA),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.title = element_text(size=12),
+        legend.position = "none")
+
+modAHPDIhigh <- ggplot(data = median_sq_dates_modA) +
+  geom_sf(aes(fill = hpdi_high, alpha=contains_sites)) +
+  geom_sf(data = ocean_boundary, color = "lightblue", fill="lightblue") + #block out ocean
+  geom_sf(data=sq_grid, fill=NA)+ #outline grid squares
+  ggtitle('90% HPDI (high)') +
+  scale_fill_manual(values = wes_palette(43, name = "GrandBudapest1", type = "continuous"), name = "") +
+  scale_alpha_manual(values=c(0.5, 1)) +
+  theme(axis.line=element_blank(),
+        axis.text.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks=element_blank(),
+        panel.background = element_rect(fill='transparent'),
+        plot.background = element_rect(fill='transparent', color=NA),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.title = element_text(size=12),
+        legend.position = "none")
 
 
+A <- cowplot::ggdraw() +
+  draw_plot(modA) +
+  draw_plot(modAHPDIlow, 
+            x = .73, y = .285, width = .25, height = .25) +
+  draw_plot(modAHPDIhigh, 
+            x = .73, y = .06, width = .25, height = .25)
+
+#Output
+pdf(file=here('output','figures','map_figure_arrival.pdf'), width=15, height=8)
+grid.arrange(A, ncol=1, padding=0)
+dev.off()
+
+
+#-------------------------------------------------------------------------------
+## Plot cumulative friction ---- FIGURE 17
+
+#Load Data ----
+load(here("output", "cumulative_friction.RData"))
+
+
+pdf(file=here('output','figures','map_cumulative_friction_100.pdf'), width=15, height=8)
+
+##Plot square areas coloured by site frequency, fitness values, elevation or cumulative friction
+ggplot(data = sq_grid_conc) +
+  geom_sf(alpha=1, aes(fill=cf)) + #Alternatively: fill=sq_fitness_value #fill=sq_height_value
+  labs(x = "Longitude", y = "Latitude", fill='Cumulative Friction')  + 
+  geom_sf(data = ocean_boundary, color = "lightblue", fill="lightblue") + #block out ocean
+  geom_sf(data = as(f_sites, 'sf'), size=3, alpha=0.5, aes(colour="purple")) + #sites
+  guides(colour = "none") + #don't plot site legend
+  geom_sf(data=sq_grid, fill=NA)+ #outline grid squares
+  geom_sf_label(aes(label = area_id), label.size  = NA, alpha = 0.4, size=3.5) + #sq grid labels
+  scale_fill_viridis() +
+  theme(panel.background = element_rect(fill = "lightblue",
+                                        colour = "lightblue",
+                                        size = 0.5,
+                                        linetype = "solid"))
+
+dev.off()
 
 
 
