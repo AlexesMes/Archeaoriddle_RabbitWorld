@@ -66,13 +66,13 @@ ef_plt <- ggplot() +
 ## Save Data  ----
 
 #Plot Elevation Map
-pdf(file=here('output', 'elevation_map.pdf'), width=8.5, height=7)
+pdf(file=here('output', 'figures', 'elevation_map.pdf'), width=8.5, height=7)
 cowplot::ggdraw() +
   draw_plot(plt)
 dev.off()
 
 #Plot Environmental Fitness Map
-pdf(file=here('output', 'fitness_map.pdf'), width=8.5, height=7)
+pdf(file=here('output', 'figures', 'fitness_map.pdf'), width=8.5, height=7)
 cowplot::ggdraw() +
   draw_plot(ef_plt)
 dev.off()
@@ -80,12 +80,13 @@ dev.off()
 #===============================================================================
 ### Plot GRID areas  ---- FIGURE map_fig_grid
 
-pdf(file=here('output', 'map_fig_grid.pdf'), width=8.5, height=7)
+pdf(file=here('output', 'figures', 'map_fig_grid.pdf'), width=8.5, height=7)
 
 ggplot(data = sq_grid) +
-  geom_sf(data = sample_win_sf) + #sampling window with coastal buffer
+  geom_sf(data = as(sample_win_sp, "sf")) + #sampling window with coastal buffer
   geom_sf(alpha=0.1) + #sq grid
   geom_sf(data = as(f_sites, 'sf'), size=3, alpha=0.5, aes(colour="purple")) + #sites
+  geom_point(aes(x=f_constants$origin_point[1], y=f_constants$origin_point[2]), colour="darkgreen", size=3) +
   geom_sf_label(aes(label = area_id), label.size  = NA, alpha = 0.4, size=3.5) + #hex grid labels
   #geom_sf(data = sq_grid$area_center, size=2, alpha=1, aes(color = "purple")) + #sq-origins
   labs(fill="Square grid", x = "Longitude", y = "Latitude") +
