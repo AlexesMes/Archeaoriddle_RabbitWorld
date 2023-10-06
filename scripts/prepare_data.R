@@ -181,32 +181,30 @@ sq_grid <- sq_grid %>%
 
 #*-------*Alternative solution if grid is small enough that some squares are entirely in the ocean
 #*#Note: leads to small differences (~0.4) in cf (cumulative friction) calculation in phasemodel_ICAR.R
-## land_within_sq <- st_make_valid(st_intersection(sq_grid$geometry, sample_win_sf$geometry))
+# land_within_sq <- st_make_valid(st_intersection(sq_grid$geometry, sample_win_sf$geometry))
 # area_within_sq <- st_area(land_within_sq)
 # prop_land_sq <- round(as.numeric(area_within_sq/area_sq), 4) #proportion of each square area that is covered by land
-
-# land_within_sq_df = as.data.frame(land_within_sq) 
-# land_within_sq_df <- land_within_sq_df %>% 
+# 
+# land_within_sq_df = as.data.frame(land_within_sq)
+# land_within_sq_df <- land_within_sq_df %>%
 #   mutate(area_id = which(contains_land),
-#          prop_land = prop_land_sq) %>% 
+#          prop_land = prop_land_sq) %>%
 #   rename(land_within_poly=geometry)
-#*-------*
-#*
-#Save proportion of land info ----
-# sq_grid <- sq_grid %>% 
+#
+#
+##Save proportion of land info ----
+# sq_grid <- sq_grid %>%
 #   mutate(area_id = row_number(),
-#          contains_land = contains_land) %>% 
-#   left_join(land_within_sq_df, by=join_by(area_id)) %>% 
-#   mutate(prop_land = coalesce(prop_land, 0)) #replace NAs in prop_land column with 0
+#          contains_land = contains_land) %>%
+#   left_join(land_within_sq_df, by=join_by(area_id)) %>%
+#   mutate(prop_land = coalesce(prop_land, 0)) %>%  #replace NAs in prop_land column with 0
+#   mutate(area_center = st_centroid(geometry)) #Assign square IDs
+#-------*
 
-#---
 #Assign square IDs ----
 sq_grid <- sq_grid %>%
   mutate(area_id = row_number(),
-         area_center = st_centroid(geometry),
-         contains_land = contains_land,
-         land_within_poly = land_within_sq,
-         prop_land = as.numeric(prop_land))
+         area_center = st_centroid(geometry))
 
 #--------
 ##Assign hex area id to each site ----

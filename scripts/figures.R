@@ -75,7 +75,7 @@ post.ci <- t(apply(post.quantreg, 1, quantile, c(0.025,0.5,0.975)))
 col.alpha <- function(x,a=1){xx=col2rgb(x)/255;return(rgb(xx[1],xx[2],xx[2],a))}
 
 pdf(file=here('output','figures','figure1.pdf'), width=8.5, height=7)
-plot(NULL, xlim=c(0,620), ylim=c(8500,7000), axes=F, xlab='Distance from Sq12_1 Site (in km)', ylab='Cal BP') 
+plot(NULL, xlim=c(0,620), ylim=c(8500,7000), axes=F, xlab='Distance from Fallsail (in km)', ylab='Cal BP') 
 axis(1, at=c(0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650)) #X-axis
 axis(2, at=c(7000, 7250, 7500, 7750, 8000, 8250, 8500)) #Y-axis left
 axis(4, at=BCADtoBP(c(-6600, -6400, -6200, -6000, -5800, -5600, -5400, -5200, -5000)), labels=c('6600BC', '6400BC', '6200BC', '6000BC', '5800BC', '5600BC', '5400BC', '5200BC', '5000BC'), cex.axis=0.6) #Y-axis right
@@ -100,7 +100,7 @@ dev.off()
 #-------------------------------------------------------------------------------
 # Posterior Dispersal Rate of non-spatial quantile regression Plot ---- FIGURE 2
 pdf(here('output','figures','figure2.pdf'),height=5,width=5.5)
-postHPDplot(1/post.beta.quantreg, xlab='km/year', ylab='Probability Density', prob=.90, main=TeX('Posterior of $1/\\beta_1$'))
+postHPDplot(1/post.beta.quantreg, xlab='km/year', xlim=c(0,5), ylab='Probability Density', prob=.90, main=TeX('Posterior of $1/\\beta_1$'))
 dev.off()
 
 
@@ -578,23 +578,22 @@ area_sites = c(1,2,4,10,13,14,16,18,24) #areas which contain sites
 ocean_boundary = st_difference(sq_grid$geometry, as(gUnaryUnion(sample_win_sp), "sf")$geometry)
 
 median_sq_dates_modA <- sq_grid %>% 
-  mutate(median_date = as.factor(med.modela),
-         hpdi_high = as.factor(hi90_modA),
-         hpdi_low = as.factor(lo90_modA),
-         contains_sites = as.factor(case_when(area_id %in% area_sites ~ 1, area_id %!in% area_sites ~ 0)),
-         median_date_sq_with_sites = case_when(area_id %in% area_sites ~ median_date, area_id %!in% area_sites ~ NA)) 
-
-
+  mutate(median_date = med.modela,
+         hpdi_high = hi90_modA,
+         hpdi_low = lo90_modA,
+         contains_sites = as.factor(case_when(area_id %in% area_sites ~ 1, area_id %!in% area_sites ~ 0)))
 #Plot
 #-----MODEL A
 modA <- ggplot(data = median_sq_dates_modA) +
   geom_sf(aes(fill = median_date, alpha=contains_sites)) + #sq grid
   geom_sf(data = ocean_boundary, color = "lightblue", fill="lightblue") + #block out ocean
   geom_sf(data=sq_grid, fill=NA)+ #outline grid squares
-  scale_fill_manual(values = wes_palette(43, name = "GrandBudapest1", type = "continuous"), name = "")+
+  #scale_fill_manual(values = wes_palette(43, name = "GrandBudapest1", type = "continuous"), name = "")+
+  scale_fill_viridis_c(option="F", direction=-1) +
+  scale_alpha_manual(values=c(0.45, 1)) +
   xlab('Longitude') +
   ylab('Latitude') +
-  geom_sf_label(aes(label = ifelse(is.na(median_date_sq_with_sites), "", paste0(median_date_sq_with_sites, "BP"))), label.size  = NA, alpha = 0.4, size=3.5) + #hex grid labels
+  geom_sf_label(aes(label = ifelse(contains_sites==0, NA, paste0(median_date, "BP"))), label.size  = NA, alpha = 0.4, size=3.5) + #hex grid labels
   scale_alpha_manual(values=c(0.5, 1)) +
   theme(panel.background = element_rect(fill = "lightblue",
                                         colour = "lightblue",
@@ -608,8 +607,9 @@ modAHPDIlow <- ggplot(data = median_sq_dates_modA) +
   geom_sf(data = ocean_boundary, color = "lightblue", fill="lightblue") + #block out ocean
   geom_sf(data=sq_grid, fill=NA)+ #outline grid squares
   ggtitle('90% HPDI (low)') +
-  scale_fill_manual(values = wes_palette(43, name = "GrandBudapest1", type = "continuous"), name = "") +
-  scale_alpha_manual(values=c(0.5, 1)) +
+  #scale_fill_manual(values = wes_palette(43, name = "GrandBudapest1", type = "continuous"), name = "") +
+  scale_fill_viridis_c(option="F", direction=-1) +
+  scale_alpha_manual(values=c(0.45, 1)) +
   theme(axis.line=element_blank(),
         axis.text.x=element_blank(),
         axis.text.y=element_blank(),
@@ -627,8 +627,9 @@ modAHPDIhigh <- ggplot(data = median_sq_dates_modA) +
   geom_sf(data = ocean_boundary, color = "lightblue", fill="lightblue") + #block out ocean
   geom_sf(data=sq_grid, fill=NA)+ #outline grid squares
   ggtitle('90% HPDI (high)') +
-  scale_fill_manual(values = wes_palette(43, name = "GrandBudapest1", type = "continuous"), name = "") +
-  scale_alpha_manual(values=c(0.5, 1)) +
+  #scale_fill_manual(values = wes_palette(43, name = "GrandBudapest1", type = "continuous"), name = "") +
+  scale_fill_viridis_c(option="F", direction=-1) +
+  scale_alpha_manual(values=c(0.45, 1)) +
   theme(axis.line=element_blank(),
         axis.text.x=element_blank(),
         axis.text.y=element_blank(),
@@ -650,7 +651,7 @@ A <- cowplot::ggdraw() +
             x = .73, y = .06, width = .25, height = .25)
 
 #Output
-pdf(file=here('output','figures','map_figure_arrival.pdf'), width=15, height=8)
+pdf(file=here('output','figures','map_figure_arrival2.pdf'), width=15, height=8)
 grid.arrange(A, ncol=1, padding=0)
 dev.off()
 

@@ -58,7 +58,7 @@ ef_plt <- ggplot() +
           alpha=0.8) +
   geom_vline(xintercept = seq(-4, 1, 0.5), colour = 'lightgrey') + #Make grid divisions explicit 
   geom_hline(yintercept = seq(-1, 4, 0.5), colour = 'lightgrey') +
-  labs(fill="Environmental fitness probability", x = "Longitude", y = "Latitude") +
+  labs(fill="Environmental fitness", x = "Longitude", y = "Latitude") + #Environmental fitness probability
   scale_fill_viridis()
 
 
@@ -66,13 +66,13 @@ ef_plt <- ggplot() +
 ## Save Data  ----
 
 #Plot Elevation Map
-pdf(file=here('output', 'figures', 'elevation_map.pdf'), width=8.5, height=7)
+pdf(file=here('output', 'figures', 'elevation_map_originaldata.pdf'), width=8.5, height=7)
 cowplot::ggdraw() +
   draw_plot(plt)
 dev.off()
 
 #Plot Environmental Fitness Map
-pdf(file=here('output', 'figures', 'fitness_map.pdf'), width=8.5, height=7)
+pdf(file=here('output', 'figures', 'fitness_map_originaldata.pdf'), width=8.5, height=7)
 cowplot::ggdraw() +
   draw_plot(ef_plt)
 dev.off()
@@ -80,7 +80,7 @@ dev.off()
 #===============================================================================
 ### Plot GRID areas  ---- FIGURE map_fig_grid
 
-pdf(file=here('output', 'figures', 'map_fig_grid.pdf'), width=8.5, height=7)
+pdf(file=here('output', 'figures', 'map_fig_grid100.pdf'), width=8.5, height=7)
 
 ggplot(data = sq_grid) +
   geom_sf(data = as(sample_win_sp, "sf")) + #sampling window with coastal buffer

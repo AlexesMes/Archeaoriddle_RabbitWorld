@@ -49,9 +49,22 @@ height_sf <- read_stars("maps/east_narnia4x.tif") %>%
 # glimpse(f_sites)
 
 ##Data concentration per site
-# f_sites %>% as.data.frame %>% 
-#   ggplot(aes(lon, lat)) + geom_point(aes(size=n_dates), color="blue", alpha=3/4) + 
-#   ggtitle("Date Concentration per Site") + coord_equal() + theme_bw()
+#Output
+pdf(file=here('output','figures','site_conc.pdf'), width=15, height=8)
+site_conc_plot <-
+  ggplot(as.data.frame(f_sites)) + 
+  geom_point(aes(lon, lat, size=n_dates), color="blue", alpha=3/4) + 
+  scale_x_continuous(name="Longitude", limits=c(-4,1)) + 
+  scale_y_continuous(name="Latitude", limits=c(-1,4)) +
+  labs(size="Number of dates") +
+  ggtitle("Date Concentration per Site") + 
+  coord_equal() +
+  theme_bw()
+
+site_conc_plot + geom_sf(data = as(sample_win_sp, "sf"), fill=NA)
+dev.off()
+
+
 
 #--------------
 #Grid concentrations
@@ -91,9 +104,10 @@ sq_site_conc <- sq_site_conc %>%
          long=st_coordinates(area_center)[,2])
 
 # ggplot(data = sq_site_conc) +
-#   geom_sf(alpha=0.5, aes(fill=freq)) + #sq grid
+#   geom_sf(alpha=0.5, aes(fill=sq_fitness_value)) + #sq grid
 #   geom_sf(data = as(f_sites, 'sf'), size=3, alpha=0.5, aes(colour="purple")) + #sites
-#   geom_sf_label(aes(label = area_ID), label.size  = NA, alpha = 0.4, size=3.5) + #hex grid labels
+#   geom_sf_label(aes(label = area_id), label.size  = NA, alpha = 0.4, size=3.5) + #hex grid labels
+#   scale_fill_viridis_c(option="F", direction=-1) +
 #   labs(fill="Square grid", x = "Longitude", y = "Latitude") +
 #   theme(panel.background = element_rect(fill = "lightblue",
 #                                         colour = "lightblue",
@@ -147,7 +161,9 @@ ggBoxPlot_elev <- ggSqData +
   labs(title = "Elevation", x = "", y = "") + 
   coord_flip()
 
-#Plot
+
+#Output
+pdf(file=here('output','figures','EDA.pdf'), width=15, height=8)
 grid.arrange(ggHist_siteconc, 
              ggBoxPlot_siteconc, 
              ggHist_fitness, 
@@ -155,6 +171,8 @@ grid.arrange(ggHist_siteconc,
              ggHist_elev, 
              ggBoxPlot_elev,
              ncol = 2, nrow = 3)
+dev.off()
+
 #-------------------------------------------------------------------------------
 ##Central trend and dispersions----
 SummaryStatistics <- function(df) {

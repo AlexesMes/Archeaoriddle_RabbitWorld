@@ -293,7 +293,7 @@ sq_grid_conc <- sq_grid_conc %>%
 
 #-------------------------------------------------------------------------------
 ## Store Output ----
-save(sq_grid_conc, file=here('output', 'cumulative_friction.RData'))
+save(sq_grid_conc, file=here('output', 'cumulative_friction_originaldata.RData'))
      
      
 #-------------------------------------------------------------------------------  
