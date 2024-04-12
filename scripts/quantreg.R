@@ -19,7 +19,7 @@ fit_rq <- rq(earliest ~ dist_org, tau = 0.95, data=f_siteInfo, alpha=0.95) #tau 
 
 # Derive overall estimated rate of dispersal
 -1/summary(fit_rq)$coefficients[2,] 
-#Note: Between ~0 to 2.87 km/year, with estimate at 2.42 km/year. 'Lower bd' and 'upper bd' represent the endpoints of confidence intervals for the model coefficients
+#Note: Between ~0.46 to 2.55 km/year, with estimate at 2.21 km/year. 'Lower bd' and 'upper bd' represent the endpoints of confidence intervals for the model coefficients
 
 #===============================================================================
 ## Bayesian Quantile Regression ----

@@ -80,7 +80,7 @@ dev.off()
 #===============================================================================
 ### Plot GRID areas  ---- FIGURE map_fig_grid
 
-pdf(file=here('output', 'figures', 'map_fig_grid100.pdf'), width=8.5, height=7)
+pdf(file=here('output', 'figures', 'map_fig_grid.pdf'), width=8.5, height=7)
 
 ggplot(data = sq_grid) +
   geom_sf(data = as(sample_win_sp, "sf")) + #sampling window with coastal buffer

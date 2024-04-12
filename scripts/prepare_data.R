@@ -18,14 +18,14 @@ rm(list = ls())
 ## Read site location data  ----
 raw_dat <- read.csv(here("data", "Biblio_data.csv"))
 
-#Extra site location data
+##Extra site location data #comment out if original data (before additional excavations) is required
 raw_dat8 <- read.csv(here("data", "square_8.csv"))
 raw_dat12 <- read.csv(here("data", "square_12.csv"), colClasses = c("integer", "character", "numeric", "numeric", "character", "character"))
 raw_dat48 <- read.csv(here("data", "square_48.csv"))
 raw_dat62 <- read.csv(here("data", "square_62.csv"))
 raw_dat98 <- read.csv(here("data", "square_98.csv"))
 
-#Merge data
+##Merge data
 raw_dat <- rbind(raw_dat, raw_dat8, raw_dat12, raw_dat48, raw_dat62, raw_dat98)
 
 #-------------------------------------------------------------------------------
@@ -171,7 +171,7 @@ prop_land <- st_area(land_within_sq)/area_sq #proportion of each square area tha
 
 ##Check:
 #library(ggplot2)
-#ggplot(data = land_within_sq) + geom_sf() 
+#ggplot(data = land_within_sq) + geom_sf()
 
 #Save proportion of land info ----
 sq_grid <- sq_grid %>%
@@ -179,8 +179,8 @@ sq_grid <- sq_grid %>%
          land_within_poly = land_within_sq,
          prop_land = as.numeric(prop_land))
 
-#*-------*Alternative solution if grid is small enough that some squares are entirely in the ocean
-#*#Note: leads to small differences (~0.4) in cf (cumulative friction) calculation in phasemodel_ICAR.R
+#*-------*Alternative solution if grid is small enough that some squares are entirely in the ocean -- i.e. if we divide sq_grid into 100 grid squares (line 159)
+# #Note: leads to small differences (~0.4) in cf (friction) calculation in cf.R
 # land_within_sq <- st_make_valid(st_intersection(sq_grid$geometry, sample_win_sf$geometry))
 # area_within_sq <- st_area(land_within_sq)
 # prop_land_sq <- round(as.numeric(area_within_sq/area_sq), 4) #proportion of each square area that is covered by land
@@ -190,9 +190,9 @@ sq_grid <- sq_grid %>%
 #   mutate(area_id = which(contains_land),
 #          prop_land = prop_land_sq) %>%
 #   rename(land_within_poly=geometry)
-#
-#
-##Save proportion of land info ----
+# 
+# 
+# #Save proportion of land info ----
 # sq_grid <- sq_grid %>%
 #   mutate(area_id = row_number(),
 #          contains_land = contains_land) %>%
